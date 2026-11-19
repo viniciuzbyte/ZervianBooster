@@ -1,54 +1,63 @@
+
 name: Build Zervian APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
-      # Action resmi ini menyediakan binary Gradle sendiri di runner, jadi
-      # TIDAK butuh gradlew/gradle-wrapper.jar sudah di-commit di repo.
-      # (gradle-wrapper.jar bukan file teks, tidak bisa saya buat tanpa akses
-      # jaringan - lihat README. Setelah kamu generate wrapper via Android
-      # Studio & commit, workflow ini tetap jalan - cukup ganti `gradle`
-      # jadi `./gradlew` di langkah build kalau mau.)
-      - name: Set up Gradle
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
-      # Jaga-jaga kalau project ke-nested (mis. repo/ZervianBooster/settings.gradle.kts
-      # gara-gara cara extract/upload zip) - cari otomatis folder yang punya
-      # settings.gradle.kts, daripada build gagal cuma karena 1 folder salah taruh.
-      - name: Locate Gradle project root
+      - name: Locate project root
         id: locate
+        shell: bash
         run: |
-          echo "=== Struktur folder hasil checkout (sampai 6 level) ==="
-          find . -maxdepth 6 -not -path "*/.git/*" | sort
+          MATCH=$(find . -maxdepth 8 -name "settings.gradle.kts" -not -path "*/.gradle/*" | head -n 1)
 
-          MATCH=$(find . -maxdepth 8 -name "settings.gradle.kts" -not -path "*/.git/*" | head -n1)
           if [ -z "$MATCH" ]; then
-            echo "::error::settings.gradle.kts tidak ketemu sampai 8 folder ke dalam. Lihat daftar folder di atas, cek apakah file ini benar2 ke-commit ke repo."
+            echo "::error::settings.gradle.kts not found"
             exit 1
           fi
+
           DIR=$(dirname "$MATCH")
-          echo "Project root terdeteksi di: $DIR"
+
+          echo "Project root: $DIR"
           echo "dir=$DIR" >> "$GITHUB_OUTPUT"
 
-      - name: Lint
+      - name: Validate Gradle
+        working-directory: ${{ steps.locate.outputs.dir }}
+        run: gradle --version
+
+      - name: Clean project
+        working-directory: ${{ steps.locate.outputs.dir }}
+        run: gradle clean
+
+      - name: Run lint
         working-directory: ${{ steps.locate.outputs.dir }}
         run: gradle lint --stacktrace
 
@@ -56,8 +65,10 @@ jobs:
         working-directory: ${{ steps.locate.outputs.dir }}
         run: gradle :app:assembleDebug --stacktrace
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: zervian-debug-apk
+          name: ZervianBooster-debug-apk
           path: ${{ steps.locate.outputs.dir }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
