@@ -21,23 +21,31 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # Action resmi ini menyediakan binary Gradle sendiri di runner, jadi
-      # TIDAK butuh gradlew/gradle-wrapper.jar sudah di-commit di repo.
-      # (gradle-wrapper.jar bukan file teks, tidak bisa saya buat tanpa akses
-      # jaringan - lihat README. Setelah kamu generate wrapper via Android
-      # Studio & commit, workflow ini tetap jalan - cukup ganti `gradle`
-      # jadi `./gradlew` di langkah build kalau mau.)
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Locate Gradle project root
+        id: locate
+        run: |
+          MATCH=$(find . -maxdepth 4 -name "settings.gradle.kts" | head -n1)
+          if [ -z "$MATCH" ]; then
+            echo "::error::settings.gradle.kts tidak ketemu sampai 4 folder ke dalam. Cek struktur repo kamu."
+            exit 1
+          fi
+          DIR=$(dirname "$MATCH")
+          echo "Project root terdeteksi di: $DIR"
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+
       - name: Lint
+        working-directory: ${{ steps.locate.outputs.dir }}
         run: gradle lint --stacktrace
 
       - name: Build debug APK
+        working-directory: ${{ steps.locate.outputs.dir }}
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: zervian-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: ${{ steps.locate.outputs.dir }}/app/build/outputs/apk/debug/*.apk
