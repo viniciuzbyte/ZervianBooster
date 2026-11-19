@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.Zervian" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/zervian_bg</item>
+        <item name="android:statusBarColor">@color/zervian_bg</item>
+        <item name="android:navigationBarColor">@color/zervian_bg</item>
+    </style>
+
+    <style name="Theme.Zervian.Splash" parent="Theme.Zervian">
+        <item name="android:windowBackground">@color/zervian_bg</item>
+    </style>
+</resources>
