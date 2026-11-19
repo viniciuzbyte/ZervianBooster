@@ -1,16 +1,15 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
     namespace = "com.zervian.booster"
-    // Android 16 (API 36) adalah target wajib Google Play per 31 Agustus 2026.
     compileSdk = 36
 
     defaultConfig {
         applicationId = "com.zervian.booster"
-        // Android 10 (Q) - dibutuhkan karena PowerManager thermal API baru ada di API 29+.
         minSdk = 29
         targetSdk = 36
         versionCode = 1
@@ -42,10 +41,6 @@ android {
 
     buildFeatures {
         compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.15"
     }
 
     packaging {
